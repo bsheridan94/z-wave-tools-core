@@ -18,6 +18,26 @@ namespace ZWave.Security
         private static readonly object _syncObj = new object();
         private static bool Is64Bit { get { return Environment.Is64BitProcess; } }
 
+        /// <summary>
+        /// True while the managed implementation (<see cref="SecurityS2Managed"/>) is used instead
+        /// of the native s2crypto library. It is switched on, once, when the native library
+        /// cannot be loaded for the process architecture - macOS on Apple Silicon has no native
+        /// build - and can be forced with the environment variable ZWAVE_S2CRYPTO=managed.
+        /// </summary>
+        internal static bool UseManagedCrypto { get; set; } =
+            string.Equals(Environment.GetEnvironmentVariable("ZWAVE_S2CRYPTO"), "managed", StringComparison.OrdinalIgnoreCase);
+
+        private static bool IsNativeUnavailable(Exception ex)
+        {
+            return ex is DllNotFoundException || ex is BadImageFormatException || ex is EntryPointNotFoundException;
+        }
+
+        private static void SwitchToManaged(Exception ex)
+        {
+            UseManagedCrypto = true;
+            "S2 crypto: native library unavailable ({0}), using the managed implementation"._DLOG(ex.GetType().Name);
+        }
+
         #region DllImports
 
         /**
@@ -52,14 +72,25 @@ namespace ZWave.Security
         {
             lock (_syncObj)
             {
-                if (Is64Bit)
+                if (!UseManagedCrypto)
                 {
-                    return CcmEncryptAndAuth_64(key, nonce, aad, aad_len, plain_ciphertext, plaintext_len);
+                    try
+                    {
+                        if (Is64Bit)
+                        {
+                            return CcmEncryptAndAuth_64(key, nonce, aad, aad_len, plain_ciphertext, plaintext_len);
+                        }
+                        else
+                        {
+                            return CcmEncryptAndAuth_32(key, nonce, aad, aad_len, plain_ciphertext, plaintext_len);
+                        }
+                    }
+                    catch (Exception ex) when (IsNativeUnavailable(ex))
+                    {
+                        SwitchToManaged(ex);
+                    }
                 }
-                else
-                {
-                    return CcmEncryptAndAuth_32(key, nonce, aad, aad_len, plain_ciphertext, plaintext_len);
-                }
+                return SecurityS2Managed.CcmEncryptAndAuth(key, nonce, aad, aad_len, plain_ciphertext, plaintext_len);
             }
         }
 
@@ -97,14 +128,25 @@ namespace ZWave.Security
         {
             lock (_syncObj)
             {
-                if (Is64Bit)
+                if (!UseManagedCrypto)
                 {
-                    return CcmDecryptAndAuth_64(key, nonce, aad, aad_len, cipher_plaintext, ciphertext_len);
+                    try
+                    {
+                        if (Is64Bit)
+                        {
+                            return CcmDecryptAndAuth_64(key, nonce, aad, aad_len, cipher_plaintext, ciphertext_len);
+                        }
+                        else
+                        {
+                            return CcmDecryptAndAuth_32(key, nonce, aad, aad_len, cipher_plaintext, ciphertext_len);
+                        }
+                    }
+                    catch (Exception ex) when (IsNativeUnavailable(ex))
+                    {
+                        SwitchToManaged(ex);
+                    }
                 }
-                else
-                {
-                    return CcmDecryptAndAuth_32(key, nonce, aad, aad_len, cipher_plaintext, ciphertext_len);
-                }
+                return SecurityS2Managed.CcmDecryptAndAuth(key, nonce, aad, aad_len, cipher_plaintext, ciphertext_len);
             }
         }
 
@@ -135,14 +177,26 @@ namespace ZWave.Security
         {
             lock (_syncObj)
             {
-                if (Is64Bit)
+                if (!UseManagedCrypto)
                 {
-                    NetworkKeyExpand_64(network_key, ccm_key, nonce_pstring, mpan_key);
+                    try
+                    {
+                        if (Is64Bit)
+                        {
+                            NetworkKeyExpand_64(network_key, ccm_key, nonce_pstring, mpan_key);
+                        }
+                        else
+                        {
+                            NetworkKeyExpand_32(network_key, ccm_key, nonce_pstring, mpan_key);
+                        }
+                        return;
+                    }
+                    catch (Exception ex) when (IsNativeUnavailable(ex))
+                    {
+                        SwitchToManaged(ex);
+                    }
                 }
-                else
-                {
-                    NetworkKeyExpand_32(network_key, ccm_key, nonce_pstring, mpan_key);
-                }
+                SecurityS2Managed.NetworkKeyExpand(network_key, ccm_key, nonce_pstring, mpan_key);
             }
         }
 
@@ -179,14 +233,26 @@ namespace ZWave.Security
         {
             lock (_syncObj)
             {
-                if (Is64Bit)
+                if (!UseManagedCrypto)
                 {
-                    TempKeyExpand_64(prk, temp_ccm_key, temp_nonce_pstring, temp_mpan_key);
+                    try
+                    {
+                        if (Is64Bit)
+                        {
+                            TempKeyExpand_64(prk, temp_ccm_key, temp_nonce_pstring, temp_mpan_key);
+                        }
+                        else
+                        {
+                            TempKeyExpand_32(prk, temp_ccm_key, temp_nonce_pstring, temp_mpan_key);
+                        }
+                        return;
+                    }
+                    catch (Exception ex) when (IsNativeUnavailable(ex))
+                    {
+                        SwitchToManaged(ex);
+                    }
                 }
-                else
-                {
-                    TempKeyExpand_32(prk, temp_ccm_key, temp_nonce_pstring, temp_mpan_key);
-                }
+                SecurityS2Managed.TempKeyExpand(prk, temp_ccm_key, temp_nonce_pstring, temp_mpan_key);
             }
         }
 
@@ -216,14 +282,26 @@ namespace ZWave.Security
         {
             lock (_syncObj)
             {
-                if (Is64Bit)
+                if (!UseManagedCrypto)
                 {
-                    TempKeyExtract_64(ecdh_share_secret, auth_tag, prk);
+                    try
+                    {
+                        if (Is64Bit)
+                        {
+                            TempKeyExtract_64(ecdh_share_secret, auth_tag, prk);
+                        }
+                        else
+                        {
+                            TempKeyExtract_32(ecdh_share_secret, auth_tag, prk);
+                        }
+                        return;
+                    }
+                    catch (Exception ex) when (IsNativeUnavailable(ex))
+                    {
+                        SwitchToManaged(ex);
+                    }
                 }
-                else
-                {
-                    TempKeyExtract_32(ecdh_share_secret, auth_tag, prk);
-                }
+                SecurityS2Managed.TempKeyExtract(ecdh_share_secret, auth_tag, prk);
             }
         }
 
@@ -251,14 +329,25 @@ namespace ZWave.Security
         {
             lock (_syncObj)
             {
-                if (Is64Bit)
+                if (!UseManagedCrypto)
                 {
-                    return CryptoScalarmultCurve25519Base_64(public_key, private_key);
+                    try
+                    {
+                        if (Is64Bit)
+                        {
+                            return CryptoScalarmultCurve25519Base_64(public_key, private_key);
+                        }
+                        else
+                        {
+                            return CryptoScalarmultCurve25519Base_32(public_key, private_key);
+                        }
+                    }
+                    catch (Exception ex) when (IsNativeUnavailable(ex))
+                    {
+                        SwitchToManaged(ex);
+                    }
                 }
-                else
-                {
-                    return CryptoScalarmultCurve25519Base_32(public_key, private_key);
-                }
+                return SecurityS2Managed.CryptoScalarmultCurve25519Base(public_key, private_key);
             }
         }
 
@@ -288,14 +377,25 @@ namespace ZWave.Security
         {
             lock (_syncObj)
             {
-                if (Is64Bit)
+                if (!UseManagedCrypto)
                 {
-                    return CryptoScalarmultCurve25519_64(shared_key, private_key, public_key);
+                    try
+                    {
+                        if (Is64Bit)
+                        {
+                            return CryptoScalarmultCurve25519_64(shared_key, private_key, public_key);
+                        }
+                        else
+                        {
+                            return CryptoScalarmultCurve25519_32(shared_key, private_key, public_key);
+                        }
+                    }
+                    catch (Exception ex) when (IsNativeUnavailable(ex))
+                    {
+                        SwitchToManaged(ex);
+                    }
                 }
-                else
-                {
-                    return CryptoScalarmultCurve25519_32(shared_key, private_key, public_key);
-                }
+                return SecurityS2Managed.CryptoScalarmultCurve25519(shared_key, private_key, public_key);
             }
         }
 
@@ -318,14 +418,26 @@ namespace ZWave.Security
         {
             lock (_syncObj)
             {
-                if (Is64Bit)
+                if (!UseManagedCrypto)
                 {
-                    AesCtrDrbgInstantiate_64(ref ctx, entropy_input, personalization);
+                    try
+                    {
+                        if (Is64Bit)
+                        {
+                            AesCtrDrbgInstantiate_64(ref ctx, entropy_input, personalization);
+                        }
+                        else
+                        {
+                            AesCtrDrbgInstantiate_32(ref ctx, entropy_input, personalization);
+                        }
+                        return;
+                    }
+                    catch (Exception ex) when (IsNativeUnavailable(ex))
+                    {
+                        SwitchToManaged(ex);
+                    }
                 }
-                else
-                {
-                    AesCtrDrbgInstantiate_32(ref ctx, entropy_input, personalization);
-                }
+                SecurityS2Managed.AesCtrDrbgInstantiate(ref ctx, entropy_input, personalization);
             }
         }
 
@@ -345,14 +457,25 @@ namespace ZWave.Security
         {
             lock (_syncObj)
             {
-                if (Is64Bit)
+                if (!UseManagedCrypto)
                 {
-                    return AesCtrDrbgGenerate_64(ref ctx, rand);
+                    try
+                    {
+                        if (Is64Bit)
+                        {
+                            return AesCtrDrbgGenerate_64(ref ctx, rand);
+                        }
+                        else
+                        {
+                            return AesCtrDrbgGenerate_32(ref ctx, rand);
+                        }
+                    }
+                    catch (Exception ex) when (IsNativeUnavailable(ex))
+                    {
+                        SwitchToManaged(ex);
+                    }
                 }
-                else
-                {
-                    return AesCtrDrbgGenerate_32(ref ctx, rand);
-                }
+                return SecurityS2Managed.AesCtrDrbgGenerate(ref ctx, rand);
             }
         }
 
@@ -375,14 +498,26 @@ namespace ZWave.Security
         {
             lock (_syncObj)
             {
-                if (Is64Bit)
+                if (!UseManagedCrypto)
                 {
-                    Aes128EcbEncrypt_64(input, key, output);
+                    try
+                    {
+                        if (Is64Bit)
+                        {
+                            Aes128EcbEncrypt_64(input, key, output);
+                        }
+                        else
+                        {
+                            Aes128EcbEncrypt_32(input, key, output);
+                        }
+                        return;
+                    }
+                    catch (Exception ex) when (IsNativeUnavailable(ex))
+                    {
+                        SwitchToManaged(ex);
+                    }
                 }
-                else
-                {
-                    Aes128EcbEncrypt_32(input, key, output);
-                }
+                SecurityS2Managed.Aes128EcbEncrypt(input, key, output);
             }
         }
 
@@ -409,14 +544,26 @@ namespace ZWave.Security
         {
             lock (_syncObj)
             {
-                if (Is64Bit)
+                if (!UseManagedCrypto)
                 {
-                    NextNonceInstantiate_64(ref ctx, ei_sender, ei_receiver, personalization);
+                    try
+                    {
+                        if (Is64Bit)
+                        {
+                            NextNonceInstantiate_64(ref ctx, ei_sender, ei_receiver, personalization);
+                        }
+                        else
+                        {
+                            NextNonceInstantiate_32(ref ctx, ei_sender, ei_receiver, personalization);
+                        }
+                        return;
+                    }
+                    catch (Exception ex) when (IsNativeUnavailable(ex))
+                    {
+                        SwitchToManaged(ex);
+                    }
                 }
-                else
-                {
-                    NextNonceInstantiate_32(ref ctx, ei_sender, ei_receiver, personalization);
-                }
+                SecurityS2Managed.NextNonceInstantiate(ref ctx, ei_sender, ei_receiver, personalization);
             }
         }
 
@@ -439,14 +586,25 @@ namespace ZWave.Security
         {
             lock (_syncObj)
             {
-                if (Is64Bit)
+                if (!UseManagedCrypto)
                 {
-                    return NextNonceGenerate_64(ref ctx, rand);
+                    try
+                    {
+                        if (Is64Bit)
+                        {
+                            return NextNonceGenerate_64(ref ctx, rand);
+                        }
+                        else
+                        {
+                            return NextNonceGenerate_32(ref ctx, rand);
+                        }
+                    }
+                    catch (Exception ex) when (IsNativeUnavailable(ex))
+                    {
+                        SwitchToManaged(ex);
+                    }
                 }
-                else
-                {
-                    return NextNonceGenerate_32(ref ctx, rand);
-                }
+                return SecurityS2Managed.NextNonceGenerate(ref ctx, rand);
             }
         }
 
@@ -454,19 +612,9 @@ namespace ZWave.Security
         {
             lock (_syncObj)
             {
-                if (Is64Bit)
+                for (int i = 0; i < iterations; i++)
                 {
-                    for (int i = 0; i < iterations; i++)
-                    {
-                        NextNonceGenerate_64(ref ctx, rand);
-                    }
-                }
-                else
-                {
-                    for (int i = 0; i < iterations; i++)
-                    {
-                        NextNonceGenerate_32(ref ctx, rand);
-                    }
+                    NextNonceGenerate(ref ctx, rand);
                 }
             }
         }
@@ -547,6 +695,11 @@ namespace ZWave.Security
                 _k = new byte[16];
             }
         }
+
+        // State for the managed implementation; copies, so contexts never share arrays.
+        internal byte Df { get { return _df; } }
+        internal byte[] V { get { return _v != null ? (byte[])_v.Clone() : new byte[16]; } }
+        internal byte[] K { get { return _k != null ? (byte[])_k.Clone() : new byte[16]; } }
 
         public CTR_DRBG_CTX Clone()
         {

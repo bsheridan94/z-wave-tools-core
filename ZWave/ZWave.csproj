@@ -172,6 +172,7 @@
     <Compile Include="Security\S2\MpanTable.cs" />
     <Compile Include="Security\S2\SecurityS2CryptoProviderBase.cs" />
     <Compile Include="Security\S2\SecurityS2Utils.cs" />
+    <Compile Include="Security\S2\SecurityS2Managed.cs" />
     <Compile Include="Security\S2\SpanContainer.cs" />
     <Compile Include="Security\S2\SpanStates.cs" />
     <Compile Include="Security\S2\SpanTable.cs" />

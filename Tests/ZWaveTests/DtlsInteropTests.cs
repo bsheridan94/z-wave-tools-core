@@ -29,6 +29,19 @@ namespace ZWaveTests
         private DtlsListener _listener;
         private DtlsClient _client;
 
+        [OneTimeSetUp]
+        public void RequireNativeLibrary()
+        {
+#if NETCOREAPP
+            // There is no native ziptrans build for every platform, e.g. none for macOS on Apple Silicon.
+            var name = Environment.Is64BitProcess ? "ziptrans64" : "ziptrans32";
+            if (!System.Runtime.InteropServices.NativeLibrary.TryLoad(name, typeof(DtlsClient).Assembly, null, out var handle))
+                Assert.Ignore("The native " + name + " library is not available for " +
+                    System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier + ".");
+            System.Runtime.InteropServices.NativeLibrary.Free(handle);
+#endif
+        }
+
         [SetUp]
         public void SetUp()
         {

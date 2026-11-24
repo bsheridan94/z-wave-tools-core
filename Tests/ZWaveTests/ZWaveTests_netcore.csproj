@@ -47,4 +47,17 @@
 	<ItemGroup Condition="$([MSBuild]::IsOSPlatform('OSX'))">
 		<Content Include="$(ZipTransportBlobsDir)osx/libziptrans64.dylib" Link="libziptrans64.dylib" CopyToOutputDirectory="PreserveNewest" />
 	</ItemGroup>
+	<!--
+		The S2 crypto library, for the same reason. Where it cannot be loaded for the process
+		architecture (macOS on Apple Silicon) SecurityS2Utils falls back to its managed implementation.
+	-->
+	<PropertyGroup>
+		<CryptoS2BlobsDir>$(MSBuildThisFileDirectory)../../z-wave-blobs/z-wave-tools-core/CryptoLibraryS2/</CryptoS2BlobsDir>
+	</PropertyGroup>
+	<ItemGroup Condition="$([MSBuild]::IsOSPlatform('Linux')) And !$(NETCoreSdkRuntimeIdentifier.StartsWith('linux-arm'))">
+		<Content Include="$(CryptoS2BlobsDir)linux/libs2crypto64.so" Link="libs2crypto64.so" CopyToOutputDirectory="PreserveNewest" />
+	</ItemGroup>
+	<ItemGroup Condition="$([MSBuild]::IsOSPlatform('OSX'))">
+		<Content Include="$(CryptoS2BlobsDir)osx/libs2crypto64.dylib" Link="libs2crypto64.dylib" CopyToOutputDirectory="PreserveNewest" />
+	</ItemGroup>
 </Project>

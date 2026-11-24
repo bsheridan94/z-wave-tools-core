@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
+using Utils;
 using ZWave.CommandClasses;
 
 namespace ZWave.ZipApplication
@@ -73,7 +74,15 @@ namespace ZWave.ZipApplication
             zipPacket.seqNo = 1;
             var discoveryFrame = (byte[])zipPacket;
             var onZipDetected = new OnZipDetectedDelegate(OnZipDetected);
-            DiscoverZip(discoveryFrame, (uint)discoveryFrame.Length, _ipv6RemoteAddress, _ipv4RemoteAddress, (ushort)_port, onZipDetected);
+            try
+            {
+                DiscoverZip(discoveryFrame, (uint)discoveryFrame.Length, _ipv6RemoteAddress, _ipv4RemoteAddress, (ushort)_port, onZipDetected);
+            }
+            // No native ziptrans library for this platform (e.g. macOS on Apple Silicon): nothing can be discovered.
+            catch (Exception ex) when (ex is DllNotFoundException || ex is BadImageFormatException || ex is EntryPointNotFoundException)
+            {
+                "Z/IP discovery unavailable: {0}"._DLOG(ex.Message);
+            }
             return _zipControllerIps.Distinct().ToArray();
         }
 

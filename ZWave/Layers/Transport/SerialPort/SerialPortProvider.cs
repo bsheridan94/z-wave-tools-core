@@ -278,7 +278,30 @@ namespace ZWave.Layers.Transport
             {
                 return UsbSerialPortLocator.GetPortNames(vid, pid);
             }
-            return SerialPort.GetPortNames();
+            var ports = SerialPort.GetPortNames();
+            return RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ? FilterMacPortNames(ports) : ports;
+        }
+
+        // Ports macOS always has that never lead to a Z-Wave module.
+        private static readonly string[] MacSystemPorts = { "/dev/cu.Bluetooth-Incoming-Port", "/dev/cu.debug-console" };
+
+        /// <summary>
+        /// macOS exposes each serial device twice: /dev/tty.* (dial-in, opening it waits for the
+        /// carrier) and /dev/cu.* (call-out). Only the call-out devices are usable for a controller.
+        /// </summary>
+        internal static string[] FilterMacPortNames(IEnumerable<string> portNames)
+        {
+            var ret = new List<string>();
+            foreach (var name in portNames)
+            {
+                if (name.StartsWith("/dev/cu.", StringComparison.Ordinal) &&
+                    Array.IndexOf(MacSystemPorts, name) < 0 && !ret.Contains(name))
+                {
+                    ret.Add(name);
+                }
+            }
+            ret.Sort(StringComparer.Ordinal);
+            return ret.ToArray();
         }
     }
 }

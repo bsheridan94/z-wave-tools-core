@@ -186,9 +186,18 @@ namespace ZWave.ZipApplication
 
         private bool ConnectInternal(string psk, string localAddress, ushort localPort, string destAddress, ushort destPortNo)
         {
-            _id = (!string.IsNullOrEmpty(localAddress) && localPort > 0) ?
-                DtlsClientConnectFrom(psk, localAddress, localPort, destAddress, destPortNo, _clientConnectedDelegate, _clientClosedDelegate) :
-                DtlsClientConnect(psk, destAddress, destPortNo, _clientConnectedDelegate, _clientClosedDelegate);
+            try
+            {
+                _id = (!string.IsNullOrEmpty(localAddress) && localPort > 0) ?
+                    DtlsClientConnectFrom(psk, localAddress, localPort, destAddress, destPortNo, _clientConnectedDelegate, _clientClosedDelegate) :
+                    DtlsClientConnect(psk, destAddress, destPortNo, _clientConnectedDelegate, _clientClosedDelegate);
+            }
+            // No native ziptrans library for this platform (e.g. macOS on Apple Silicon): Z/IP over DTLS is unavailable.
+            catch (Exception ex) when (ex is DllNotFoundException || ex is BadImageFormatException || ex is EntryPointNotFoundException)
+            {
+                "DTLS client unavailable: {0}"._DLOG(ex.Message);
+                _id = UIntPtr.Zero;
+            }
             return _id != UIntPtr.Zero;
         }
 

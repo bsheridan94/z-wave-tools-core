@@ -56,9 +56,11 @@
     <Compile Include="Security\MpanContainerTests.cs" />
     <Compile Include="Security\MpanTableTests.cs" />
     <Compile Include="Security\SecurityS2UtilsTests.cs" />
+    <Compile Include="Security\SecurityS2ManagedTests.cs" />
     <Compile Include="Security\SpanContainerTests.cs" />
     <Compile Include="Security\SpanTableTests.cs" />
     <Compile Include="TcpClientTransportClientTests.cs" />
+    <Compile Include="SerialPortProviderTests.cs" />
     <Compile Include="SerialPortTransportClientTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SessionClientTests.cs" />

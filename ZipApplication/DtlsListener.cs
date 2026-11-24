@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: Silicon Laboratories Inc. <https://www.silabs.com>
 using System;
 using System.Runtime.InteropServices;
+using Utils;
 
 namespace ZWave.ZipApplication
 {
@@ -135,7 +136,16 @@ namespace ZWave.ZipApplication
             {
                 return -1;
             }
-            _id = DtlsListenerStart(psk, localAddress, portNo, _dataReceivedDelegate, _clientConnectedDelegate, _clientClosedDelegate);
+            try
+            {
+                _id = DtlsListenerStart(psk, localAddress, portNo, _dataReceivedDelegate, _clientConnectedDelegate, _clientClosedDelegate);
+            }
+            // No native ziptrans library for this platform (e.g. macOS on Apple Silicon): Z/IP over DTLS is unavailable.
+            catch (Exception ex) when (ex is DllNotFoundException || ex is BadImageFormatException || ex is EntryPointNotFoundException)
+            {
+                "DTLS listener unavailable: {0}"._DLOG(ex.Message);
+                _id = UIntPtr.Zero;
+            }
             _listening = _id != UIntPtr.Zero;
             return _listening ? 0 : -1;
         }
